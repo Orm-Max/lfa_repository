@@ -50,24 +50,6 @@ The key theorem is that regular grammars and finite automata are equivalent in e
 
 The Grammar class represents a formal grammar with all its essential components. It stores non-terminals, terminals, production rules as a map structure, and the start symbol. The class uses a random number generator to enable non-deterministic string generation.
 
-```java
-public class Grammar {
-    Set<String> nonTerminals;   // S, A, B, C ...
-    Set<String> terminals;      // a, b, c, d ...
-    Map<String, List<String>> rules;  // Production rules
-    String startSymbol;         // Start symbol (S)
-    Random random = new Random();
-
-    public Grammar(Set<String> nonTerminals, Set<String> terminals,
-                   Map<String, List<String>> rules, String startSymbol) {
-        this.nonTerminals = nonTerminals;
-        this.terminals = terminals;
-        this.rules = rules;
-        this.startSymbol = startSymbol;
-    }
-}
-```
-
 ### String Generation Algorithm
 
 The `generateString` method implements a derivation process that starts from the start symbol and iteratively replaces non-terminals with productions from the grammar rules. It scans the current string from left to right, finds the first non-terminal, randomly selects one of its production rules, and replaces it. This process continues until no non-terminals remain or a maximum step limit is reached, preventing infinite derivations.
@@ -152,26 +134,6 @@ public FiniteAutomaton toFiniteAutomaton() {
 
 The `FiniteAutomaton` class encapsulates the five-tuple definition of a finite automaton. The transition function is represented as a map where keys are "state,symbol" pairs and values are sets of next states, supporting non-deterministic transitions if needed.
 
-```java
-public class FiniteAutomaton {
-    Set<String> states;
-    Set<String> alphabet;
-    Map<String, Set<String>> transitions;
-    String startState;
-    Set<String> finalStates;
-
-    public FiniteAutomaton(Set<String> states, Set<String> alphabet,
-                           Map<String, Set<String>> transitions,
-                           String startState, Set<String> finalStates) {
-        this.states = states;
-        this.alphabet = alphabet;
-        this.transitions = transitions;
-        this.startState = startState;
-        this.finalStates = finalStates;
-    }
-}
-```
-
 ### String Validation Algorithm
 
 The `checkString` method simulates the finite automaton's execution on an input string. It maintains a set of current states (supporting non-determinism), and for each input symbol, it computes all possible next states by looking up transitions in the transition map. If at any point no transitions are possible, the string is rejected. After processing the entire input, the string is accepted if any current state is a final state.
@@ -210,47 +172,6 @@ public boolean checkString(String input) {
 ### Main Class - Demonstration
 
 The `Main` class demonstrates the complete workflow. It defines a specific grammar with production rules S->dA, A->aB|bA, B->bC|aB|d, C->cB, generates five valid strings, converts the grammar to a finite automaton, and validates both generated strings and intentionally invalid strings.
-
-```java
-public class Main {
-    public static void main(String[] args) {
-        // Define grammar
-        Set<String> nonTerminals = new HashSet<>(Arrays.asList("S", "A", "B", "C"));
-        Set<String> terminals = new HashSet<>(Arrays.asList("a", "b", "c", "d"));
-
-        Map<String, List<String>> rules = new HashMap<>();
-        rules.put("S", Arrays.asList("dA"));
-        rules.put("A", Arrays.asList("aB", "bA"));
-        rules.put("B", Arrays.asList("bC", "aB", "d"));
-        rules.put("C", Arrays.asList("cB"));
-
-        Grammar grammar = new Grammar(nonTerminals, terminals, rules, "S");
-
-        // Generate strings
-        List<String> generated = new ArrayList<>();
-        for (int i = 0; i < 5; i++) {
-            String s = grammar.generateString(50);
-            generated.add(s);
-        }
-
-        // Convert to FA
-        FiniteAutomaton fa = grammar.toFiniteAutomaton();
-
-        // Test generated and invalid strings
-        System.out.println("Testing generated strings:");
-        for (String s : generated) {
-            System.out.println(s + " -> " + (fa.checkString(s) ? "accepted" : "not accepted"));
-        }
-
-        System.out.println("\nTesting invalid strings:");
-        String[] invalid = {"abc", "ad", "ddd", "daaa", "xyz"};
-        for (String s : invalid) {
-            System.out.println(s + " -> " + (fa.checkString(s) ? "accepted" : "not accepted"));
-        }
-    }
-}
-```
-
 ---
 
 ## Results and Execution

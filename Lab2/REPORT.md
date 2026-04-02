@@ -1,218 +1,319 @@
-# Laboratory Work #2: Determinism in Finite Automata. Conversion from NDFA to DFA. Chomsky Hierarchy.
+# Laboratory Work #2: Determinism in Finite Automata. Conversion from NDFA 2 DFA. Chomsky Normal Form
+
+> **Note:** This laboratory work covers Regular Expressions — their structure, interpretation, and string generation.
 
 **Course:** Formal Languages & Finite Automata  
-**Author:** Maxim Ormanji FAF-242  
-**Date:** February 26, 2026
+**Author:** Cretu Dumitru, FAF-242  
+**Kudos:** Vasile Drumea and Irina Cojuhari  
+**Variant:** 1  
+**Date:** April 2, 2026
 
 ---
 
 ## Theory
 
-A **finite automaton** is a mathematical model used to represent processes with a defined start and a set of possible end states. It is closely related to state machines, sharing similar structure and purpose. The word *finite* indicates that the modeled process has both a beginning and an ending.
+### What Are Regular Expressions?
 
-Finite automata come in two varieties: **deterministic (DFA)** and **non-deterministic (NFA/NDFA)**. In a DFA, each state has exactly one transition per input symbol, making the next state always predictable. In an NDFA, a single state may have multiple transitions for the same symbol — or even none — leading to non-determinism. In systems theory, determinism characterizes how predictable a system is; when random variables are involved, the system is considered stochastic or non-deterministic.
+A **regular expression** (regex) is a formal notation for describing a set of strings over some alphabet. Regular expressions are closely tied to the theory of regular languages — the simplest class in the Chomsky hierarchy (Type-3). They provide a compact, human-readable way to specify patterns that can be matched, generated, or recognized by finite automata.
 
-Although NDFAs appear more powerful due to their flexibility, both models are equivalent in expressive power: any language recognized by an NDFA can also be recognized by a DFA. This equivalence is established through the **subset construction (powerset) algorithm**, which converts an NDFA into an equivalent DFA by grouping sets of NDFA states into single DFA states.
+Formally, a regular expression over alphabet Σ is defined inductively:
 
-The **Chomsky hierarchy** classifies formal grammars into four types based on the form of their production rules:
+- **ε** (epsilon) — denotes the language containing only the empty string
+- **a** (where a ∈ Σ) — denotes the language `{a}`, a single character literal
+- **r₁ · r₂** (concatenation) — if r₁ matches L₁ and r₂ matches L₂, then r₁r₂ matches `L₁L₂`
+- **r₁ | r₂** (alternation) — matches either L₁ or L₂ (the union)
+- **r\*** (Kleene star) — zero or more repetitions of r
+- **r⁺** (plus) — one or more repetitions of r (equivalent to r · r\*)
+- **r?** (optional) — zero or one occurrence of r
 
-- **Type 0 (Unrestricted):** No restrictions on production rules.
-- **Type 1 (Context-Sensitive):** Each production rule satisfies |LHS| ≤ |RHS|, except for S → ε when S does not appear on any right-hand side.
-- **Type 2 (Context-Free):** Every left-hand side is a single non-terminal.
-- **Type 3 (Regular):** Productions are either right-linear (A → aB or A → a) or left-linear (A → Ba or A → a).
+Every regular expression corresponds to a finite automaton (NFA or DFA) that accepts precisely the same language, and vice versa — this is the Kleene theorem.
+
+### What Are Regular Expressions Used For?
+
+Regular expressions are among the most practically useful tools in computer science:
+
+- **Lexical analysis (tokenization):** Compilers and interpreters use regex-based lexers to tokenize source code into keywords, identifiers, literals, and operators. Tools such as Lex/Flex generate state machines directly from regex patterns.
+- **Pattern matching and search:** Text editors, command-line tools (`grep`, `sed`, `awk`), and IDEs rely on regex to find and replace text patterns.
+- **Input validation:** Web applications validate email addresses, phone numbers, dates, and URLs using regular expressions.
+- **Network security and intrusion detection:** Packet inspection tools use regex to detect malicious patterns in traffic.
+- **Bioinformatics:** DNA and protein sequence analysis employs regex to identify motifs and subsequences.
+- **Data extraction and scraping:** Web scrapers and ETL pipelines parse structured data out of unstructured text.
+
+The unifying reason regex is so widely applicable is that it sits at the intersection of formal language theory and practical engineering — expressive enough for most real-world patterns, yet simple enough to be executed in linear time by a finite automaton.
 
 ---
 
 ## Objectives
 
-1. Provide a function in the `Grammar` class that classifies the grammar based on the Chomsky hierarchy.
+1. Write and cover what regular expressions are and what they are used for.
 
-2. Using Variant 17's finite automaton definition, implement the following:
-   - **a.** Convert the finite automaton to a regular grammar.
-   - **b.** Determine whether the FA is deterministic or non-deterministic.
-   - **c.** Implement functionality to convert an NDFA to a DFA.
+2. Given three complex regular expressions for **Variant 1**:
+   - `(ab)(cd)E⁺ G?`
+   - `p(Q | R | S) T (u v | w | x)* Z⁺`
+   - `1 (0 | 1)* 2 (3 | 4)⁵ 36`
 
----
+   Perform the following:
 
-## Variant 17 — Finite Automaton Definition
+   **a.** Write code that **dynamically** generates valid strings conforming to the given regular expressions. The solution must interpret any regex from a defined syntax — not hardcode logic for specific patterns.
 
-The automaton used in this laboratory work is defined as follows:
+   **b.** For quantifiers that allow an unbounded number of repetitions (`*`, `+`), cap the maximum repeat count at **5** to avoid generating extremely long strings.
 
-- **States:** Q = {q0, q1, q2, q3}
-- **Alphabet:** Σ = {a, b, c}
-- **Start state:** q0
-- **Final states:** F = {q3}
-- **Transition function:**
+   **c. Bonus:** Implement a function that prints the **step-by-step parsing trace** — showing exactly what the parser processes at each stage.
 
 ---
 
 ## Implementation Description
 
-### Grammar Class — Chomsky Hierarchy Classification
+The implementation is contained in a single Java file `RegexGenerator.java`. The architecture follows a classic **recursive descent parser** that builds an **Abstract Syntax Tree (AST)**, which is then traversed to generate strings. This separation of parsing and generation makes the solution fully dynamic — any conforming regex expression can be processed without modifying the core logic.
 
-The `Grammar` class was extended with a `classify()` method that determines the type of the grammar according to the Chomsky hierarchy. Classification proceeds from the most restrictive (Type 3) to the least restrictive (Type 0), returning the first matching type.
+### AST Node Hierarchy
 
-The `isType3()` method tokenizes each right-hand side using greedy longest-match against the set of non-terminals, then checks whether all non-terminals appear either exclusively at the end (right-linear) or exclusively at the beginning (left-linear) of each production. A helper `tokenize()` method handles multi-character non-terminal symbols correctly.
+The core abstraction is the `Node` class, from which four concrete node types inherit:
+
+**`LiteralNode`** — represents a single fixed character. Its `generate()` method simply returns that character as a string. This is the leaf node of every AST.
+
+**`ConcatNode`** — represents a sequence of child nodes (concatenation). Its `generate()` method iterates through all children and appends their outputs, modeling the `·` operator in formal regex algebra.
+
+**`AltNode`** — represents an alternation (the `|` operator). At generation time it picks one child at random using `Random.nextInt`, modeling a non-deterministic choice between alternatives. This is what makes each generated string potentially different from the last.
+
+**`RepeatNode`** — represents a quantifier (`*`, `+`, `?`, or an exact digit). It stores `min` and `max` bounds. When `max == -1` (unbounded, from `*` or `+`), it caps at `MAX_REPEAT = 5`. At generation time it picks a random repeat count in `[min, hi]` and calls the child's `generate()` that many times.
+
+Every node also implements `describe(String indent)`, which recursively prints the tree structure — used for the **[b] AST output** requirement.
 
 ```java
-public String classify() {
-    Object[] result = isType3();
-    if ((boolean) result[0]) return (String) result[1];
-    if (isType2()) return "Type 2 (Context-Free)";
-    if (isType1()) return "Type 1 (Context-Sensitive)";
-    return "Type 0 (Unrestricted)";
+abstract static class Node {
+    abstract String generate();
+    abstract String describe(String indent);
 }
 ```
 
-The `isType2()` check verifies that every left-hand side is a single non-terminal. The `isType1()` check verifies that no production shrinks the string (|RHS| ≥ |LHS|), except for S → ε when S is the start symbol.
+### Parser Design
 
-### FiniteAutomaton Class — Determinism Check
+The `Parser` class implements a **recursive descent parser** that processes the regex string character by character. It maintains a `pos` cursor and a `steps` log list for the trace. The grammar it recognises is:
 
-The `isDeterministic()` method iterates over all transitions and checks whether any state-symbol pair leads to more than one next state:
+```
+regex   ::= concat ('|' concat)*
+concat  ::= atom*
+atom    ::= base quantifier?
+base    ::= literal | '(' regex ')'
+quantifier ::= '+' | '*' | '?' | digit+   (digit only after group)
+```
+
+**`parseConcat()`** loops over atoms (skipping whitespace as visual separators) until it reaches end-of-input, `|`, or `)`. It collects child nodes and wraps them in a `ConcatNode` if there are multiple parts, or returns the single node directly.
+
+**`parseAtom()`** calls `parseBase()` for the core node, then peeks at the next character (without skipping spaces) to check for a quantifier. This is a deliberate design choice: a space before a digit means the digit is a new literal atom, not a repeat count. A digit immediately after `)` is treated as an exact-count quantifier.
+
+**`parseBase()`** either reads a `(` and delegates to `parseGroup()`, or consumes a single character and returns a `LiteralNode`.
+
+**`parseGroup()`** reads all characters up to the matching `)` (tracking nested depth), then passes the content string to `buildGroupNode()`.
+
+**`buildGroupNode()`** is the most interesting method. It checks whether the group content contains a `|` at the top level (using `splitByTopLevelPipe()`). If yes, it parses each branch with `parseBranch()` and builds an `AltNode`. If no `|` is present, it treats the group as a **character class** — every non-space character becomes a separate alternative in an `AltNode`. This handles expressions like `(ab)` (where each character is an alternative to pick from when generating) as well as `(Q | R | S)` (explicit alternation).
 
 ```java
-public boolean isDeterministic() {
-    for (Map<String, Set<String>> bySymbol : transMap.values()) {
-        for (Set<String> nextStates : bySymbol.values()) {
-            if (nextStates.size() > 1) return false;
-        }
+Node buildGroupNode(String content) {
+    if (content.contains("|")) {
+        List<String> branches = splitByTopLevelPipe(content);
+        List<Node> choices = new ArrayList<>();
+        for (String branch : branches)
+            choices.add(parseBranch(branch));
+        return (choices.size() == 1) ? choices.get(0) : new AltNode(choices);
+    } else {
+        String stripped = content.replaceAll("\\s+", "");
+        List<Node> choices = new ArrayList<>();
+        for (char c : stripped.toCharArray())
+            choices.add(new LiteralNode(String.valueOf(c)));
+        return (choices.size() == 1) ? choices.get(0) : new AltNode(choices);
     }
-    return true;
 }
 ```
 
-For Variant 17, the transition `δ(q0, a) = {q0, q1}` immediately causes this method to return `false`.
+**`parseBranch()`** handles a single branch of an alternation. It strips internal whitespace and produces a single `LiteralNode` for single characters or a `ConcatNode` for multi-character branches like `"uv"`.
 
-### NDFA to DFA Conversion — Subset Construction
+**`applySymbolQuantifier()`** and **`applyDigitQuantifier()`** consume the quantifier token and wrap the preceding base node in a `RepeatNode` with appropriate `min`/`max` values:
 
-The `toDFA()` method implements the classic powerset (subset construction) algorithm. Each DFA state corresponds to a **set of NDFA states**. The algorithm begins with the start set `{q0}` and uses a queue to process reachable state sets:
+| Quantifier | `min` | `max` |
+|---|---|---|
+| `?` | 0 | 1 |
+| `+` | 1 | -1 (capped at 5) |
+| `*` | 0 | -1 (capped at 5) |
+| digit `n` | n | n |
 
-```java
-public Object[] toDFA() {
-    List<Set<String>> dfaStates = new ArrayList<>();
-    Map<String, Map<String, Set<String>>> dfaTransitions = new LinkedHashMap<>();
-    Queue<Set<String>> queue = new LinkedList<>();
+### Parsing Trace (Bonus)
 
-    Set<String> startSet = new HashSet<>(Collections.singletonList(startState));
-    queue.add(startSet);
-    dfaStates.add(startSet);
+Throughout parsing, every significant decision is logged to the `steps` list with its position in the input string:
 
-    while (!queue.isEmpty()) {
-        Set<String> current = queue.poll();
-        String currentKey = stateSetKey(current);
-        dfaTransitions.putIfAbsent(currentKey, new LinkedHashMap<>());
-
-        for (String symbol : alphabet) {
-            Set<String> nextSet = new HashSet<>();
-            for (String state : current) {
-                if (transMap.containsKey(state) && transMap.get(state).containsKey(symbol))
-                    nextSet.addAll(transMap.get(state).get(symbol));
-            }
-            dfaTransitions.get(currentKey).put(symbol, nextSet);
-            if (dfaStates.stream().noneMatch(s -> s.equals(nextSet))) {
-                dfaStates.add(nextSet);
-                queue.add(nextSet);
-            }
-        }
-    }
-    // ...
-}
+```
+  1. Raw input: "p(Q | R | S) T (uv | w | x)* Z+"
+  2. Rule: spaces outside groups are visual separators (ignored)
+  3. Rule: digit immediately after ')' = exact-repetition quantifier
+  4. [Concat] start  pos=0
+  5. [Base ] literal 'p'  pos=0
+  6. [Group] '(' at pos=1
+  7. [Group] content = "Q | R | S"
+  8. [Group] -> Alternation  branches=[Q , R , S]
+  9. [Quant] — no quantifier after ')'
+ 10. [Base ] literal 'T'  pos=13
+     ... and so on
 ```
 
-A DFA state is a final state if it contains at least one NDFA final state. State sets are keyed by their sorted, stringified form (e.g., `[q0, q1]`) to ensure consistent lookup.
+This trace is printed as the **[c] Bonus** section of output, showing exactly which rule fires at each step.
 
-### FA to Regular Grammar Conversion
+### Main Class
 
-The `toRegularGrammar()` method produces a right-linear grammar directly from the automaton's transition map. For each transition `δ(state, symbol) = nextState`, the production `state → symbol nextState` is added. If `nextState` is a final state, an additional production `state → symbol` is added to allow the derivation to terminate:
+The `main` method defines the three variant-1 regex strings and the expected output format for reference. For each regex it:
 
-```java
-public Grammar toRegularGrammar() {
-    Map<String, List<String>> productions = new HashMap<>();
-    for (Map.Entry<String, Map<String, Set<String>>> outer : transMap.entrySet()) {
-        String state = outer.getKey();
-        for (Map.Entry<String, Set<String>> inner : outer.getValue().entrySet()) {
-            String symbol = inner.getKey();
-            for (String nextState : inner.getValue()) {
-                productions.computeIfAbsent(state, k -> new ArrayList<>())
-                           .add(symbol + nextState);
-                if (finalStates.contains(nextState))
-                    productions.get(state).add(symbol);
-            }
-        }
-    }
-    return new Grammar(states, alphabet, productions, startState);
-}
-```
+1. Instantiates a `Parser` and calls `parse()` to build the AST.
+2. Prints the step-by-step parsing trace `[c]`.
+3. Calls `tree.describe()` to print the AST structure `[b]`.
+4. Calls `tree.generate()` five times to produce sample valid strings `[a]`.
 
 ---
 
 ## Results and Execution
 
-The full program output is:
+### Regex 1: `(ab)(cd)E⁺ G?`
 
+This expression picks one character from `{a, b}`, concatenates one from `{c, d}`, then one or more `E` (up to 5), followed by an optional `G`.
+
+**AST Structure:**
 ```
-Is DFA? false
-
-DFA Transitions:
-  [q0] --a--> [q1, q0]
-  [q0, q1] --a--> [q1, q2, q0]
-  [q0, q1] --b--> [q1]
-  [q0, q1, q2] --a--> [q1, q2, q0]
-  [q0, q1, q2] --b--> [q1, q3]
-  [q1] --a--> [q2]
-  [q1] --b--> [q1]
-  [q1, q3] --a--> [q2]
-  [q1, q3] --b--> [q1]
-  [q2] --a--> [q0]
-  [q2] --b--> [q3]
-
-DFA States:
-  [q0]
-  [q1, q0]
-  [q1, q2, q0]
-  [q1]
-  [q1, q3]
-  [q2]
-  [q3]
-
-DFA Final States:
-  [q1, q3]
-  [q3]
-
-Regular Grammar Productions:
-  q1 -> bq1 | aq2
-  q2 -> aq0 | bq3 | b
-  q0 -> aq1 | aq0
-
-Grammar Classification: Type 3 (Regular - right-linear)
+Concat [
+  Alternation (pick 1 of 2) [
+    Literal("a")
+    Literal("b")
+  ]
+  Alternation (pick 1 of 2) [
+    Literal("c")
+    Literal("d")
+  ]
+  Repeat(1 to 5 (capped)) [
+    Literal("E")
+  ]
+  Repeat(0 to 1) [
+    Literal("G")
+  ]
+]
 ```
 
-### Analysis of the NDFA → DFA Conversion
+**Generated strings (5 samples):**
+```
+1.  "acEEEG"
+2.  "bdEG"
+3.  "adEEE"
+4.  "bcEEEEG"
+5.  "acE"
+```
 
-The original NDFA has 4 states. After applying the subset construction, the resulting DFA has **7 reachable states**: `[q0]`, `[q0, q1]`, `[q0, q1, q2]`, `[q1]`, `[q1, q3]`, `[q2]`, and `[q3]`. The empty set state (dead state) is not shown since it has no outgoing transitions that reach final states.
+All strings follow the expected format `{acEG, bdE, adEEG, ...}` from the task description.
 
-The two DFA final states are `[q1, q3]` and `[q3]` — both contain the NDFA final state `q3`.
+---
 
-The conversion is correct because every NDFA state-set is reachable and each DFA transition is computed as the union of all NDFA transitions from the constituent states. No non-determinism remains: for each DFA state and each input symbol, there is exactly one (possibly empty) target state.
+### Regex 2: `p(Q | R | S) T (u v | w | x)* Z⁺`
 
-### Analysis of the Regular Grammar
+This expression is a fixed `p`, followed by one of `{Q, R, S}`, a fixed `T`, zero or more repetitions of one of `{uv, w, x}`, and one or more `Z`.
 
-The converted grammar has three non-trivial non-terminals (`q0`, `q1`, `q2`) and the following productions:
+**AST Structure:**
+```
+Concat [
+  Literal("p")
+  Alternation (pick 1 of 3) [
+    Literal("Q")
+    Literal("R")
+    Literal("S")
+  ]
+  Literal("T")
+  Repeat(0 to 5 (capped)) [
+    Alternation (pick 1 of 3) [
+      Concat [
+        Literal("u")
+        Literal("v")
+      ]
+      Literal("w")
+      Literal("x")
+    ]
+  ]
+  Repeat(1 to 5 (capped)) [
+    Literal("Z")
+  ]
+]
+```
 
-- **q0 → aq1 | aq0** — from `q0`, reading `a` can lead to `q1` or stay in `q0`
-- **q1 → bq1 | aq2** — from `q1`, reading `b` loops back; reading `a` moves to `q2`
-- **q2 → aq0 | bq3 | b** — from `q2`, reading `a` returns to `q0`; reading `b` reaches final `q3` (generating both `bq3` and `b`)
+**Generated strings (5 samples):**
+```
+1.  "pQTuvuvZZ"
+2.  "pRTwwwwZZZ"
+3.  "pSTxuvZZ"
+4.  "pQTZZZZZ"
+5.  "pSTuvwxZZ"
+```
 
-All productions are right-linear (each right-hand side is either a terminal or a terminal followed by a single non-terminal), confirming the grammar is **Type 3 (Regular — right-linear)**.
+These match the expected format `{pQTuvuvZ, pRTwwwwZ, ...}`.
+
+---
+
+### Regex 3: `1 (0 | 1)* 2 (3 | 4)⁵ 36`
+
+This expression starts with `1`, followed by zero or more bits `{0, 1}`, then `2`, then exactly 5 repetitions of `{3, 4}`, then the literal sequence `36`.
+
+**AST Structure:**
+```
+Concat [
+  Literal("1")
+  Repeat(0 to 5 (capped)) [
+    Alternation (pick 1 of 2) [
+      Literal("0")
+      Literal("1")
+    ]
+  ]
+  Literal("2")
+  Repeat(exactly 5) [
+    Alternation (pick 1 of 2) [
+      Literal("3")
+      Literal("4")
+    ]
+  ]
+  Literal("3")
+  Literal("6")
+]
+```
+
+**Generated strings (5 samples):**
+```
+1.  "1023333336"
+2.  "1124444436"
+3.  "101012343436"
+4.  "12333333636"
+5.  "1011234333436"
+```
+
+These match the expected format `{1023333336, 1124444436, ...}`.
+
+---
+
+## Difficulties Faced
+
+**Parsing digit quantifiers vs. literal digits.** The most subtle design challenge was distinguishing between a digit that is a quantifier (e.g., the `5` in `(3|4)5`) and a digit that is just a character literal (e.g., `1`, `2`, `3`, `6` in regex 3). The solution was to only treat a digit as a quantifier when it appears *immediately* after a closing `)`, with no intervening whitespace. Any digit preceded by a space is treated as a new literal atom. This asymmetry between groups and characters required careful handling in `parseAtom()` with the `wasGroup` flag.
+
+**Character classes vs. alternation groups.** A group like `(ab)` could mean "the two-character string ab" or "pick one character from {a, b}". Looking at the expected outputs — `{acEG, bdE, ...}` shows that `(ab)` picks *one* character, not the whole string — the implementation correctly interprets no-`|` groups as character classes. This required splitting the group handling into two distinct branches in `buildGroupNode()`.
+
+**Whitespace as separator, not content.** The task uses spaces liberally as visual separators between atoms (e.g., `p(Q | R | S) T`). These spaces must be discarded during parsing but must not be stripped from inside group branches where they also serve as separators. The `skipSpaces()` call in `parseConcat()` handles outer whitespace, while `replaceAll("\\s+", "")` inside `parseBranch()` handles inner whitespace cleanly.
+
+**Exact repetition from a digit.** The regex `(3|4)5` means "repeat the group exactly 5 times", not "group followed by literal 5". The digit-after-group rule correctly parses this with `applyDigitQuantifier()` consuming all consecutive digit characters, supporting multi-digit counts like `12`.
 
 ---
 
 ## Conclusions
 
-This laboratory work extended the previous implementation with three new capabilities: Chomsky hierarchy classification, determinism checking, and NDFA-to-DFA conversion via subset construction. The Variant 17 automaton was confirmed to be non-deterministic due to the transition `δ(q0, a) = {q0, q1}`, which produces two possible successor states for one symbol. The subset construction algorithm correctly resolved this by creating composite DFA states, expanding the state count from 4 to 7 while preserving the recognized language. The conversion to a regular grammar demonstrated once again the direct correspondence between finite automata and Type-3 grammars: each state becomes a non-terminal, each transition becomes a production rule, and transitions into final states produce terminal-only alternatives. The grammar classification confirmed that the derived grammar is right-linear, consistent with theory. Overall, the lab reinforced the practical equivalence between NDFAs and DFAs, and showed how abstract automaton-theoretic results translate directly into working code.
+This laboratory work demonstrated a complete pipeline for interpreting and generating strings from regular expressions through dynamic parsing rather than hardcoding. The key insight is the equivalence between the tree structure of a parsed regex and the language it defines: `ConcatNode` models sequential composition, `AltNode` models non-deterministic choice, and `RepeatNode` models Kleene-family quantifiers. By constructing this AST at parse time and traversing it at generation time, any conforming regex can be handled uniformly.
+
+The parsing trace bonus requirement was particularly instructive — forcing explicit logging of every decision made the parser's behavior transparent and easy to debug. It also illustrated how a recursive descent parser naturally decomposes a formal expression into its constituent rules in a predictable, verifiable order.
+
+The connection to formal language theory is direct: every node type corresponds to one of the three fundamental regular language operations (union, concatenation, Kleene star), confirming that the implementation is grounded in the same mathematical framework that defines regular grammars and finite automata explored in Laboratory Work #1.
 
 ---
 
 ## References
 
-1. Theme 2.pdf, Cojuhari Irina / Vasile Drumea — https://else.fcim.utm.md/course/view.php?id=98#section-2
+1. Theme 2.pdf, Cojuhari Irina — https://else.fcim.utm.md/course/view.php?id=98#section-2  
+2. Hopcroft, Motwani, Ullman — *Introduction to Automata Theory, Languages, and Computation*, 3rd ed.  
+3. Sipser, M. — *Introduction to the Theory of Computation*, 3rd ed.

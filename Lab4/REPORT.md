@@ -1,4 +1,4 @@
-# Laboratory Work #2: Determinism in Finite Automata. Conversion from NFA to DFA. Chomsky Normal Form
+# Laboratory Work #4: Regular Expressions
 
 **Course:** Formal Languages & Finite Automata  
 **Author:** Maxim Ormanji FAF-242  
@@ -327,5 +327,5 @@ Overall, the lab reinforced the connection between formal language theory and pr
 
 ## References
 
-1. Theme 2.pdf, Cojuhari Irina — https://else.fcim.utm.md/course/view.php?id=98#section-2  
+1. Theme 4.pdf, Cojuhari Irina — https://else.fcim.utm.md/course/view.php?id=98#section-4  
 2. Aho, Lam, Sethi, Ullman — *Compilers: Principles, Techniques, and Tools* (2nd ed.), Chapter 3

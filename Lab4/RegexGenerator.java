@@ -206,7 +206,7 @@ public class RegexGenerator {
                 for (String branch : branches) {
                     choices.add(parseBranch(branch));
                 }
-                steps.add("[Group] -> Alternation  branches=" + branches);
+                steps.add("[Group] -> Alternation  branches=" + branches.size());
                 return (choices.size() == 1) ? choices.get(0) : new AltNode(choices);
 
             } else {
@@ -295,21 +295,10 @@ public class RegexGenerator {
             "1 (0 | 1)* 2 (3 | 4)5 36"
         };
 
-        // Expected outputs from the task description (for reference):
-        //   Regex 1:  {acEG, bdE, adEEG, ...}
-        //   Regex 2:  {pQTuvuvZ, pRTwwwwZ, ...}
-        //   Regex 3:  {1023333336, 1124444436, ...}
-        String[] expected = {
-            "{acEG, bdE, adEEG, ...}",
-            "{pQTuvuvZ, pRTwwwwZ, ...}",
-            "{1023333336, 1124444436, ...}"
-        };
-
         for (int i = 0; i < regexes.length; i++) {
 
             System.out.println("\n" + "=".repeat(65));
             System.out.println("  REGEX " + (i + 1) + ":  " + regexes[i]);
-            System.out.println("  Expected format: " + expected[i]);
             System.out.println("=".repeat(65));
 
             // Parse the regex into an AST

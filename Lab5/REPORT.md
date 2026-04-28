@@ -1,12 +1,9 @@
 # Laboratory Work #5: Chomsky Normal Form
 
-> **Note:** This laboratory work covers the normalization of a context-free grammar into Chomsky Normal Form (CNF) — a canonical representation used in parsing theory and the Cocke–Younger–Kasami (CYK) algorithm.
-
 **Course:** Formal Languages & Finite Automata  
-**Author:** Cretu Dumitru, FAF-242  
-**Kudos:** Vasile Drumea and Irina Cojuhari  
+**Author:** Maxim Ormanji, FAF-242  
 **Variant:** 17  
-**Date:** April 28, 2026
+**Date:** April 23, 2026
 
 ---
 
